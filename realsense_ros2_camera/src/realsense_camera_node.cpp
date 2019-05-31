@@ -68,14 +68,19 @@ const stream_index_pair GYRO{RS2_STREAM_GYRO, 0};
 const stream_index_pair ACCEL{RS2_STREAM_ACCEL, 0};
 
 const std::vector<std::vector<stream_index_pair>> IMAGE_STREAMS = {{{DEPTH, INFRA1, INFRA2},
-    {COLOR},
-    {FISHEYE}}};
+    {COLOR}, {FISHEYE}}};
 
 const std::vector<std::vector<stream_index_pair>> HID_STREAMS = {{GYRO, ACCEL}};
 
+rs2::device _dev;
 inline void signalHandler(int signum)
 {
-  std::cout << strsignal(signum) << "Signal is received! Terminate RealSense Node...\n";
+  std::cout << strsignal(signum) << " Signal is received! Terminate RealSense Node...\n";
+  auto sens = _dev.query_sensors();
+  for (auto it=sens.begin(); it!=sens.end(); it++) {
+    it->stop();
+    it->close();
+  }
   rclcpp::shutdown();
   exit(signum);
 }
@@ -96,8 +101,8 @@ public:
   : Node("RealSenseCameraNode"),
     _ros_clock(RCL_ROS_TIME),
     _serial_no(""),
-    _static_tf_broadcaster(std::shared_ptr<rclcpp::Node>(this)),
     _base_frame_id(""),
+    qos(rclcpp::QoSInitialization::from_rmw(rmw_qos_profile_default)),
     _intialize_time_base(false)
   {
     RCLCPP_INFO(logger_, "RealSense ROS v%s", REALSENSE_ROS_VERSION_STR);
@@ -181,29 +186,41 @@ private:
     RCLCPP_INFO(logger_, "getParameters...");
 
     this->get_parameter_or("enable_pointcloud", _pointcloud, POINTCLOUD);
-    this->get_parameter_or("enable_sync", _sync_frames, SYNC_FRAMES);
-    if (_pointcloud) {
-      _sync_frames = true;
+    this->get_parameter_or("enable_aligned_pointcloud", _align_pointcloud, ALIGN_POINTCLOUD);
+    // this->get_parameter_or("enable_sync", _sync_frames, SYNC_FRAMES);
+    this->get_parameter_or("enable_depth", _enable[DEPTH], ENABLE_DEPTH);
+    this->get_parameter_or("enable_aligned_depth", _align_depth, ALIGN_DEPTH);
+    this->get_parameter_or("enable_infra1", _enable[INFRA1], ENABLE_INFRA1);
+    this->get_parameter_or("enable_infra2", _enable[INFRA2], ENABLE_INFRA2);
+    if (!_enable[DEPTH]) {
+      _pointcloud = false;
+      _align_depth = false;
+      _enable[INFRA1] = false;
+      _enable[INFRA2] = false;
     }
 
-    this->get_parameter_or("enable_aligned_depth", _align_depth, ALIGN_DEPTH);
+    if (!_enable[DEPTH] || !_align_depth) {
+      _align_pointcloud = false;
+    }
 
+    if (_pointcloud || _align_depth) {
+      _sync_frames = true;
+    } else {
+      _sync_frames = false;
+    }
     this->get_parameter("serial_no", _serial_no);
 
     this->get_parameter_or("depth_width", _width[DEPTH], DEPTH_WIDTH);
     this->get_parameter_or("depth_height", _height[DEPTH], DEPTH_HEIGHT);
     this->get_parameter_or("depth_fps", _fps[DEPTH], DEPTH_FPS);
-    this->get_parameter_or("enable_depth", _enable[DEPTH], ENABLE_DEPTH);
 
     this->get_parameter_or("infra1_width", _width[INFRA1], INFRA1_WIDTH);
     this->get_parameter_or("infra1_height", _height[INFRA1], INFRA1_HEIGHT);
     this->get_parameter_or("infra1_fps", _fps[INFRA1], INFRA1_FPS);
-    this->get_parameter_or("enable_infra1", _enable[INFRA1], ENABLE_INFRA1);
 
     this->get_parameter_or("infra2_width", _width[INFRA2], INFRA2_WIDTH);
     this->get_parameter_or("infra2_height", _height[INFRA2], INFRA2_HEIGHT);
     this->get_parameter_or("infra2_fps", _fps[INFRA2], INFRA2_FPS);
-    this->get_parameter_or("enable_infra2", _enable[INFRA2], ENABLE_INFRA2);
 
     this->get_parameter_or("color_width", _width[COLOR], COLOR_WIDTH);
     this->get_parameter_or("color_height", _height[COLOR], COLOR_HEIGHT);
@@ -358,12 +375,19 @@ private:
         _pointcloud_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>(
           "camera/depth/color/points", 1);
       }
+
       if (_align_depth) {
         _align_depth_publisher = image_transport::create_publisher(
           this, "camera/aligned_depth_to_color/image_raw");
         _align_depth_camera_publisher = this->create_publisher<sensor_msgs::msg::CameraInfo>(
           "camera/aligned_depth_to_color/camera_info", 1);
       }
+
+      if (_align_pointcloud && _align_depth) {
+        _align_pointcloud_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>(
+          "camera/aligned_depth_to_color/color/points", 1);
+	  }
+
     }
 
     if (true == _enable[INFRA1]) {
@@ -395,21 +419,21 @@ private:
       _info_publisher[FISHEYE] = this->create_publisher<sensor_msgs::msg::CameraInfo>(
         "camera/fisheye/camera_info", 1);
       _fe_to_depth_publisher = this->create_publisher<realsense_camera_msgs::msg::Extrinsics>(
-        "camera/extrinsics/fisheye2depth", rmw_qos_profile_default);
+        "camera/extrinsics/fisheye2depth", qos);
     }
 
     if (true == _enable[GYRO]) {
       _imu_publishers[GYRO] = this->create_publisher<sensor_msgs::msg::Imu>("camera/gyro/sample",
           100);
       _imu_info_publisher[GYRO] = this->create_publisher<realsense_camera_msgs::msg::IMUInfo>(
-        "camera/gyro/imu_info", rmw_qos_profile_default);
+        "camera/gyro/imu_info", qos);
     }
 
     if (true == _enable[ACCEL]) {
       _imu_publishers[ACCEL] = this->create_publisher<sensor_msgs::msg::Imu>("camera/accel/sample",
           100);
       _imu_info_publisher[ACCEL] = this->create_publisher<realsense_camera_msgs::msg::IMUInfo>(
-        "camera/accel/imu_info", rmw_qos_profile_default);
+        "camera/accel/imu_info", qos);
     }
 
     if (true == _enable[FISHEYE] &&
@@ -417,8 +441,10 @@ private:
       true == _enable[ACCEL]))
     {
       _fe_to_imu_publisher = this->create_publisher<realsense_camera_msgs::msg::Extrinsics>(
-        "camera/extrinsics/fisheye2imu", rmw_qos_profile_default);
+        "camera/extrinsics/fisheye2imu", qos);
     }
+    _static_tf_broadcaster_ =
+      std::make_shared<tf2_ros::StaticTransformBroadcaster>(shared_from_this());
   }
 
   void setupStreams()
@@ -507,6 +533,22 @@ private:
                 frame.get_timestamp(), t.nanoseconds());
               publishFrame(f, t);
             }
+
+            if (_align_depth && is_depth_frame_arrived && is_color_frame_arrived) {
+              RCLCPP_DEBUG(logger_, "publishAlignedDepthTopic(...)");
+              publishAlignedDepthImg(frame, t);
+            }
+
+            if (_pointcloud && is_depth_frame_arrived && is_color_frame_arrived) {
+              RCLCPP_DEBUG(logger_, "publishPCTopic(...)");
+              publishPCTopic(t);
+            }
+
+            if (_align_depth && _align_pointcloud && is_depth_frame_arrived && is_color_frame_arrived) {
+              RCLCPP_DEBUG(logger_, "publishAlignedPCTopic(...)");
+              publishAlignedPCTopic(t);
+            }
+
           } else {
             auto stream_type = frame.get_profile().stream_type();
             RCLCPP_DEBUG(logger_,
@@ -514,14 +556,6 @@ private:
               rs2_stream_to_string(stream_type), frame.get_frame_number(),
               frame.get_timestamp(), t.nanoseconds());
             publishFrame(frame, t);
-          }
-          if (_align_depth && is_depth_frame_arrived && is_color_frame_arrived) {
-            RCLCPP_DEBUG(logger_, "publishAlignedDepthTopic(...)");
-            publishAlignedDepthImg(depth_frame, t);
-          }
-          if (_pointcloud && is_depth_frame_arrived && is_color_frame_arrived) {
-            RCLCPP_DEBUG(logger_, "publishPCTopic(...)");
-            publishPCTopic(t);
           }
         };
 
@@ -700,15 +734,15 @@ private:
     _camera_info[stream_index].p.at(10) = 1;
     _camera_info[stream_index].p.at(11) = 0;
 
-    rs2::stream_profile depth_profile;
-    if (!getEnabledProfile(DEPTH, depth_profile)) {
-      RCLCPP_ERROR(logger_, "Depth profile not found!");
-      rclcpp::shutdown();
-      exit(1);
-    }
 
     // Why Depth to Color?
     if (stream_index == DEPTH && _enable[DEPTH] && _enable[COLOR]) {
+      rs2::stream_profile depth_profile;
+      if (!getEnabledProfile(DEPTH, depth_profile)) {
+        RCLCPP_ERROR(logger_, "Depth profile not found!");
+        rclcpp::shutdown();
+        exit(1);
+      }
       _depth2color_extrinsics = depth_profile.get_extrinsics_to(_enabled_profiles[COLOR].front());
       // set depth to color translation values in Projection matrix (P)
       _camera_info[stream_index].p.at(3) = _depth2color_extrinsics.translation[0];             // Tx
@@ -780,7 +814,7 @@ private:
     b2d_msg.transform.rotation.y = 0;
     b2d_msg.transform.rotation.z = 0;
     b2d_msg.transform.rotation.w = 1;
-    _static_tf_broadcaster.sendTransform(b2d_msg);
+   _static_tf_broadcaster_->sendTransform(b2d_msg);
 
     // Transform depth frame to depth optical frame
     q_d2do.setRPY(-M_PI / 2, 0.0, -M_PI / 2);
@@ -794,14 +828,8 @@ private:
     d2do_msg.transform.rotation.y = q_d2do.getY();
     d2do_msg.transform.rotation.z = q_d2do.getZ();
     d2do_msg.transform.rotation.w = q_d2do.getW();
-    _static_tf_broadcaster.sendTransform(d2do_msg);
+   _static_tf_broadcaster_->sendTransform(d2do_msg);
 
-    rs2::stream_profile depth_profile;
-    if (!getEnabledProfile(DEPTH, depth_profile)) {
-      RCLCPP_ERROR(logger_, "Depth profile not found!");
-      rclcpp::shutdown();
-      exit(1);
-    }
 
     if (true == _enable[COLOR]) {
       // Transform base frame to color frame
@@ -817,7 +845,7 @@ private:
       b2c_msg.transform.rotation.y = q.y();
       b2c_msg.transform.rotation.z = q.z();
       b2c_msg.transform.rotation.w = q.w();
-      _static_tf_broadcaster.sendTransform(b2c_msg);
+     _static_tf_broadcaster_->sendTransform(b2c_msg);
 
       // Transform color frame to color optical frame
       q_c2co.setRPY(-M_PI / 2, 0.0, -M_PI / 2);
@@ -831,72 +859,80 @@ private:
       c2co_msg.transform.rotation.y = q_c2co.getY();
       c2co_msg.transform.rotation.z = q_c2co.getZ();
       c2co_msg.transform.rotation.w = q_c2co.getW();
-      _static_tf_broadcaster.sendTransform(c2co_msg);
+     _static_tf_broadcaster_->sendTransform(c2co_msg);
     }
 
-    if (true == _enable[INFRA1]) {
-      auto d2ir1_extrinsics = depth_profile.get_extrinsics_to(_enabled_profiles[INFRA1].front());
-      auto q = rotationMatrixToQuaternion(d2ir1_extrinsics.rotation);
+    if (_enable[DEPTH]) {
+      rs2::stream_profile depth_profile;
+      if (!getEnabledProfile(DEPTH, depth_profile)) {
+        RCLCPP_ERROR(logger_, "Depth profile not found!");
+        rclcpp::shutdown();
+        exit(1);
+      }
+      if (true == _enable[INFRA1]) {
+        auto d2ir1_extrinsics = depth_profile.get_extrinsics_to(_enabled_profiles[INFRA1].front());
+        auto q = rotationMatrixToQuaternion(d2ir1_extrinsics.rotation);
 
-      // Transform base frame to infra1
-      b2ir1_msg.header.stamp = transform_ts_;
-      b2ir1_msg.header.frame_id = _base_frame_id;
-      b2ir1_msg.child_frame_id = _frame_id[INFRA1];
-      b2ir1_msg.transform.translation.x = d2ir1_extrinsics.translation[2];
-      b2ir1_msg.transform.translation.y = -d2ir1_extrinsics.translation[0];
-      b2ir1_msg.transform.translation.z = -d2ir1_extrinsics.translation[1];
+        // Transform base frame to infra1
+        b2ir1_msg.header.stamp = transform_ts_;
+        b2ir1_msg.header.frame_id = _base_frame_id;
+        b2ir1_msg.child_frame_id = _frame_id[INFRA1];
+        b2ir1_msg.transform.translation.x = d2ir1_extrinsics.translation[2];
+        b2ir1_msg.transform.translation.y = -d2ir1_extrinsics.translation[0];
+        b2ir1_msg.transform.translation.z = -d2ir1_extrinsics.translation[1];
 
-      b2ir1_msg.transform.rotation.x = q.x();
-      b2ir1_msg.transform.rotation.y = q.y();
-      b2ir1_msg.transform.rotation.z = q.z();
-      b2ir1_msg.transform.rotation.w = q.w();
-      _static_tf_broadcaster.sendTransform(b2ir1_msg);
+        b2ir1_msg.transform.rotation.x = q.x();
+        b2ir1_msg.transform.rotation.y = q.y();
+        b2ir1_msg.transform.rotation.z = q.z();
+        b2ir1_msg.transform.rotation.w = q.w();
+       _static_tf_broadcaster_->sendTransform(b2ir1_msg);
 
-      // Transform infra1 frame to infra1 optical frame
-      ir1_2_ir1o.setRPY(-M_PI / 2, 0.0, -M_PI / 2);
-      ir1_2_ir1o_msg.header.stamp = transform_ts_;
-      ir1_2_ir1o_msg.header.frame_id = _frame_id[INFRA1];
-      ir1_2_ir1o_msg.child_frame_id = _optical_frame_id[INFRA1];
-      ir1_2_ir1o_msg.transform.translation.x = 0;
-      ir1_2_ir1o_msg.transform.translation.y = 0;
-      ir1_2_ir1o_msg.transform.translation.z = 0;
-      ir1_2_ir1o_msg.transform.rotation.x = ir1_2_ir1o.getX();
-      ir1_2_ir1o_msg.transform.rotation.y = ir1_2_ir1o.getY();
-      ir1_2_ir1o_msg.transform.rotation.z = ir1_2_ir1o.getZ();
-      ir1_2_ir1o_msg.transform.rotation.w = ir1_2_ir1o.getW();
-      _static_tf_broadcaster.sendTransform(ir1_2_ir1o_msg);
-    }
+        // Transform infra1 frame to infra1 optical frame
+        ir1_2_ir1o.setRPY(-M_PI / 2, 0.0, -M_PI / 2);
+        ir1_2_ir1o_msg.header.stamp = transform_ts_;
+        ir1_2_ir1o_msg.header.frame_id = _frame_id[INFRA1];
+        ir1_2_ir1o_msg.child_frame_id = _optical_frame_id[INFRA1];
+        ir1_2_ir1o_msg.transform.translation.x = 0;
+        ir1_2_ir1o_msg.transform.translation.y = 0;
+        ir1_2_ir1o_msg.transform.translation.z = 0;
+        ir1_2_ir1o_msg.transform.rotation.x = ir1_2_ir1o.getX();
+        ir1_2_ir1o_msg.transform.rotation.y = ir1_2_ir1o.getY();
+        ir1_2_ir1o_msg.transform.rotation.z = ir1_2_ir1o.getZ();
+        ir1_2_ir1o_msg.transform.rotation.w = ir1_2_ir1o.getW();
+       _static_tf_broadcaster_->sendTransform(ir1_2_ir1o_msg);
+      }
 
-    if (true == _enable[INFRA2]) {
-      auto d2ir2_extrinsics = depth_profile.get_extrinsics_to(_enabled_profiles[INFRA2].front());
-      auto q = rotationMatrixToQuaternion(d2ir2_extrinsics.rotation);
+      if (true == _enable[INFRA2]) {
+        auto d2ir2_extrinsics = depth_profile.get_extrinsics_to(_enabled_profiles[INFRA2].front());
+        auto q = rotationMatrixToQuaternion(d2ir2_extrinsics.rotation);
 
-      // Transform base frame to infra2
-      b2ir2_msg.header.stamp = transform_ts_;
-      b2ir2_msg.header.frame_id = _base_frame_id;
-      b2ir2_msg.child_frame_id = _frame_id[INFRA2];
-      b2ir2_msg.transform.translation.x = d2ir2_extrinsics.translation[2];
-      b2ir2_msg.transform.translation.y = -d2ir2_extrinsics.translation[0];
-      b2ir2_msg.transform.translation.z = -d2ir2_extrinsics.translation[1];
-      b2ir2_msg.transform.rotation.x = q.x();
-      b2ir2_msg.transform.rotation.y = q.y();
-      b2ir2_msg.transform.rotation.z = q.z();
-      b2ir2_msg.transform.rotation.w = q.w();
-      _static_tf_broadcaster.sendTransform(b2ir2_msg);
+        // Transform base frame to infra2
+        b2ir2_msg.header.stamp = transform_ts_;
+        b2ir2_msg.header.frame_id = _base_frame_id;
+        b2ir2_msg.child_frame_id = _frame_id[INFRA2];
+        b2ir2_msg.transform.translation.x = d2ir2_extrinsics.translation[2];
+        b2ir2_msg.transform.translation.y = -d2ir2_extrinsics.translation[0];
+        b2ir2_msg.transform.translation.z = -d2ir2_extrinsics.translation[1];
+        b2ir2_msg.transform.rotation.x = q.x();
+        b2ir2_msg.transform.rotation.y = q.y();
+        b2ir2_msg.transform.rotation.z = q.z();
+        b2ir2_msg.transform.rotation.w = q.w();
+       _static_tf_broadcaster_->sendTransform(b2ir2_msg);
 
-      // Transform infra2 frame to infra1 optical frame
-      ir2_2_ir2o.setRPY(-M_PI / 2, 0.0, -M_PI / 2);
-      ir2_2_ir2o_msg.header.stamp = transform_ts_;
-      ir2_2_ir2o_msg.header.frame_id = _frame_id[INFRA2];
-      ir2_2_ir2o_msg.child_frame_id = _optical_frame_id[INFRA2];
-      ir2_2_ir2o_msg.transform.translation.x = 0;
-      ir2_2_ir2o_msg.transform.translation.y = 0;
-      ir2_2_ir2o_msg.transform.translation.z = 0;
-      ir2_2_ir2o_msg.transform.rotation.x = ir2_2_ir2o.getX();
-      ir2_2_ir2o_msg.transform.rotation.y = ir2_2_ir2o.getY();
-      ir2_2_ir2o_msg.transform.rotation.z = ir2_2_ir2o.getZ();
-      ir2_2_ir2o_msg.transform.rotation.w = ir2_2_ir2o.getW();
-      _static_tf_broadcaster.sendTransform(ir2_2_ir2o_msg);
+        // Transform infra2 frame to infra1 optical frame
+        ir2_2_ir2o.setRPY(-M_PI / 2, 0.0, -M_PI / 2);
+        ir2_2_ir2o_msg.header.stamp = transform_ts_;
+        ir2_2_ir2o_msg.header.frame_id = _frame_id[INFRA2];
+        ir2_2_ir2o_msg.child_frame_id = _optical_frame_id[INFRA2];
+        ir2_2_ir2o_msg.transform.translation.x = 0;
+        ir2_2_ir2o_msg.transform.translation.y = 0;
+        ir2_2_ir2o_msg.transform.translation.z = 0;
+        ir2_2_ir2o_msg.transform.rotation.x = ir2_2_ir2o.getX();
+        ir2_2_ir2o_msg.transform.rotation.y = ir2_2_ir2o.getY();
+        ir2_2_ir2o_msg.transform.rotation.z = ir2_2_ir2o.getZ();
+        ir2_2_ir2o_msg.transform.rotation.w = ir2_2_ir2o.getW();
+       _static_tf_broadcaster_->sendTransform(ir2_2_ir2o_msg);
+      }
     }
     // Publish Fisheye TF
   }
@@ -964,6 +1000,7 @@ private:
       }
     }
   }
+
   rs2_extrinsics getRsExtrinsics(
     const stream_index_pair & from_stream,
     const stream_index_pair & to_stream)
@@ -972,24 +1009,24 @@ private:
     auto & to = _enabled_profiles[to_stream].front();
     return from.get_extrinsics_to(to);
   }
+
   void publishAlignedDepthImg(rs2::frame depth_frame, const rclcpp::Time & t)
   {
-    auto from_image_frame = depth_frame.as<rs2::video_frame>();
-    std::vector<uint8_t> out_vec;
-    out_vec.resize(_width[DEPTH] * _height[DEPTH] * _unit_step_size[DEPTH]);
-    auto ex = getRsExtrinsics(DEPTH, COLOR);
-    alignFrame(_stream_intrinsics[DEPTH], _stream_intrinsics[COLOR],
-      depth_frame, from_image_frame.get_bytes_per_pixel(),
-      ex, out_vec);
-    auto from_image =
-      cv::Mat(_width[DEPTH], _height[DEPTH], _image_format[DEPTH], cv::Scalar(0, 0, 0));
-    from_image.data = out_vec.data();
+
+    rs2::align align(RS2_STREAM_COLOR);
+    _aligned_frameset = depth_frame.apply_filter(align);
+    rs2::depth_frame aligned_depth = _aligned_frameset.get_depth_frame();
     RCLCPP_DEBUG(logger_, "aligned done!");
+
+    auto vf = aligned_depth.as<rs2::video_frame>();
+    auto depth_image = cv::Mat(cv::Size(vf.get_width(), vf.get_height()), _image_format[DEPTH],
+			(void*)vf.get_data(), cv::Mat::AUTO_STEP);
+
     sensor_msgs::msg::Image::SharedPtr img;
     auto info_msg = _camera_info[DEPTH];
     img = cv_bridge::CvImage(
-      std_msgs::msg::Header(), sensor_msgs::image_encodings::TYPE_16UC1, from_image).toImageMsg();
-    auto image = depth_frame.as<rs2::video_frame>();
+      std_msgs::msg::Header(), sensor_msgs::image_encodings::TYPE_16UC1, depth_image).toImageMsg();
+    auto image = aligned_depth.as<rs2::video_frame>();
     auto bpp = image.get_bytes_per_pixel();
     auto height = image.get_height();
     auto width = image.get_width();
@@ -1001,6 +1038,7 @@ private:
     img->header.stamp = t;
     _align_depth_publisher.publish(img);
     _align_depth_camera_publisher->publish(info_msg);
+
   }
 
   void publishPCTopic(const rclcpp::Time & t)
@@ -1081,6 +1119,72 @@ private:
     }
     _pointcloud_publisher->publish(msg_pointcloud);
   }
+
+  void publishAlignedPCTopic(const rclcpp::Time & t)
+  {
+    rs2::depth_frame aligned_depth = _aligned_frameset.get_depth_frame();
+
+    auto image_depth16 = reinterpret_cast<const uint16_t *>(aligned_depth.get_data());
+    auto depth_intrinsics = _stream_intrinsics[COLOR];
+    unsigned char * color_data = _image[COLOR].data;
+    sensor_msgs::msg::PointCloud2 msg_pointcloud;
+    msg_pointcloud.header.stamp = t;
+    msg_pointcloud.header.frame_id = _optical_frame_id[DEPTH];
+    msg_pointcloud.width = depth_intrinsics.width;
+    msg_pointcloud.height = depth_intrinsics.height;
+    msg_pointcloud.is_dense = true;
+
+    sensor_msgs::PointCloud2Modifier modifier(msg_pointcloud);
+
+    modifier.setPointCloud2Fields(3,
+      "x", 1, sensor_msgs::msg::PointField::FLOAT32,
+      "y", 1, sensor_msgs::msg::PointField::FLOAT32,
+      "z", 1, sensor_msgs::msg::PointField::FLOAT32,
+      "rgb", 1, sensor_msgs::msg::PointField::FLOAT32);
+    modifier.setPointCloud2FieldsByString(2, "xyz", "rgb");
+
+    sensor_msgs::PointCloud2Iterator<float> iter_x(msg_pointcloud, "x");
+    sensor_msgs::PointCloud2Iterator<float> iter_y(msg_pointcloud, "y");
+    sensor_msgs::PointCloud2Iterator<float> iter_z(msg_pointcloud, "z");
+
+    sensor_msgs::PointCloud2Iterator<uint8_t> iter_r(msg_pointcloud, "r");
+    sensor_msgs::PointCloud2Iterator<uint8_t> iter_g(msg_pointcloud, "g");
+    sensor_msgs::PointCloud2Iterator<uint8_t> iter_b(msg_pointcloud, "b");
+
+    float std_nan = std::numeric_limits<float>::quiet_NaN();
+    float depth_point[3], scaled_depth;
+
+    // Fill the PointCloud2 fields
+    for (int y = 0; y < depth_intrinsics.height; ++y) {
+      for (int x = 0; x < depth_intrinsics.width; ++x) {
+        scaled_depth = static_cast<float>(*image_depth16) * _depth_scale_meters;
+        float depth_pixel[2] = {static_cast<float>(x), static_cast<float>(y)};
+        rs2_deproject_pixel_to_point(depth_point, &depth_intrinsics, depth_pixel, scaled_depth);
+        auto iter_offset = x  + y * depth_intrinsics.width;
+
+        if (depth_point[2] <= 0.f || depth_point[2] > 5.f) {
+            *(iter_x + iter_offset) = std_nan;
+            *(iter_y + iter_offset) = std_nan;
+            *(iter_z + iter_offset) = std_nan;
+            *(iter_r + iter_offset) = static_cast<uint8_t>(96);
+            *(iter_g + iter_offset) = static_cast<uint8_t>(157);
+            *(iter_b + iter_offset) = static_cast<uint8_t>(198);
+        } else {
+            *(iter_x + iter_offset) = depth_point[0];
+            *(iter_y + iter_offset) = depth_point[1];
+            *(iter_z + iter_offset) = depth_point[2];
+            *(iter_r + iter_offset) = color_data[iter_offset*3];
+            *(iter_g + iter_offset) = color_data[iter_offset*3 + 1];
+            *(iter_b + iter_offset) = color_data[iter_offset*3 + 2];
+		}
+
+        ++image_depth16;
+      }
+    }
+
+    _align_pointcloud_publisher->publish(msg_pointcloud);
+  }
+
 
   Extrinsics rsExtrinsicsToMsg(const rs2_extrinsics & extrinsics) const
   {
@@ -1223,7 +1327,6 @@ private:
 
   rclcpp::Clock _ros_clock;
   std::unique_ptr<rs2::context> _ctx;
-  rs2::device _dev;
 
   std::map<stream_index_pair, std::unique_ptr<rs2::sensor>> _sensors;
 
@@ -1236,7 +1339,8 @@ private:
   std::map<stream_index_pair, int> _fps;
   std::map<stream_index_pair, bool> _enable;
   std::map<stream_index_pair, std::string> _stream_name;
-  tf2_ros::StaticTransformBroadcaster _static_tf_broadcaster;
+
+  std::shared_ptr<tf2_ros::StaticTransformBroadcaster> _static_tf_broadcaster_;
 
   std::map<stream_index_pair, image_transport::Publisher> _image_publishers;
   std::map<stream_index_pair, rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr> _imu_publishers;
@@ -1257,6 +1361,8 @@ private:
   std::map<stream_index_pair, sensor_msgs::msg::CameraInfo> _camera_info;
   rclcpp::Publisher<realsense_camera_msgs::msg::Extrinsics>::SharedPtr _fe_to_depth_publisher,
     _fe_to_imu_publisher;
+
+  rclcpp::QoS qos;
   bool _intialize_time_base;
   double _camera_time_base;
   std::map<stream_index_pair, std::vector<rs2::stream_profile>> _enabled_profiles;
@@ -1265,13 +1371,18 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr _align_depth_camera_publisher;
 
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _pointcloud_publisher;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _align_pointcloud_publisher;
+
   rclcpp::Time _ros_time_base;
   rclcpp::Logger logger_ = rclcpp::get_logger("RealSenseCameraNode");
   bool _sync_frames;
   bool _pointcloud;
+  bool _align_pointcloud;
   bool _align_depth;
   PipelineSyncer _syncer;
   rs2_extrinsics _depth2color_extrinsics;
+
+  rs2::frameset _aligned_frameset;
 };  // end class
 }  // namespace realsense_ros2_camera
 
