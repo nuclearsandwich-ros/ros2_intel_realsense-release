@@ -1,3 +1,30 @@
+## ros2_intel_realsense (dashing) - 2.0.7-1
+
+The packages in the `ros2_intel_realsense` repository were released into the `dashing` distro by running `/usr/bin/bloom-release --rosdistro dashing --track dashing ros2_intel_realsense -n` on `Tue, 21 Apr 2020 03:02:20 -0000`
+
+These packages were released:
+- `realsense_examples`
+- `realsense_msgs`
+- `realsense_node`
+- `realsense_ros`
+
+Version of package(s) in repository `ros2_intel_realsense`:
+
+- upstream repository: https://github.com/intel/ros2_intel_realsense.git
+- release repository: https://github.com/ros2-gbp/ros2_intel_realsense-release.git
+- rosdistro version: `2.0.7`
+- old version: `2.0.4-2`
+- new version: `2.0.7-1`
+
+Versions of tools used:
+
+- bloom version: `0.9.3`
+- catkin_pkg version: `0.4.17`
+- rosdep version: `0.17.1`
+- rosdistro version: `0.8.1`
+- vcstools version: `0.1.42`
+
+
 ## ros2_intel_realsense (dashing) - 2.0.4-2
 
 The packages in the `ros2_intel_realsense` repository were released into the `dashing` distro by running `/usr/bin/bloom-release --rosdistro dashing --track dashing ros2_intel_realsense --edit` on `Fri, 31 May 2019 02:07:33 -0000`
