@@ -1,0 +1,12 @@
+Source: ros-dashing-realsense-node
+Section: misc
+Priority: optional
+Maintainer: Xiaojun Huang <xiaojun.huang@intel.com>
+Build-Depends: debhelper (>= 9.0.0), ros-dashing-ament-cmake, ros-dashing-ament-lint-auto, ros-dashing-ament-lint-common, ros-dashing-cv-bridge, ros-dashing-nav-msgs, ros-dashing-rclcpp, ros-dashing-realsense-msgs, ros-dashing-realsense-ros, ros-dashing-sensor-msgs, ros-dashing-tf2, ros-dashing-tf2-ros, ros-dashing-ros-workspace
+Homepage: 
+Standards-Version: 3.9.2
+
+Package: ros-dashing-realsense-node
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-dashing-cv-bridge, ros-dashing-nav-msgs, ros-dashing-rclcpp, ros-dashing-realsense-msgs, ros-dashing-realsense-ros, ros-dashing-sensor-msgs, ros-dashing-tf2, ros-dashing-tf2-ros, ros-dashing-ros-workspace
+Description: ROS2 realsense node
