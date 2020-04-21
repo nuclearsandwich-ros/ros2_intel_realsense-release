@@ -1,0 +1,12 @@
+Source: ros-dashing-realsense-ros
+Section: misc
+Priority: optional
+Maintainer: Xiaojun Huang <xiaojun.huang@intel.com>
+Build-Depends: debhelper (>= 9.0.0), ros-dashing-ament-cmake, ros-dashing-ament-cmake-gtest, ros-dashing-ament-lint-auto, ros-dashing-ament-lint-common, ros-dashing-cv-bridge, ros-dashing-image-transport, ros-dashing-librealsense2, ros-dashing-nav-msgs, ros-dashing-pcl-conversions, ros-dashing-rclcpp, ros-dashing-rclcpp-components, ros-dashing-realsense-msgs, ros-dashing-sensor-msgs, ros-dashing-tf2, ros-dashing-tf2-ros, ros-dashing-ros-workspace
+Homepage: 
+Standards-Version: 3.9.2
+
+Package: ros-dashing-realsense-ros
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-dashing-cv-bridge, ros-dashing-image-transport, ros-dashing-launch-ros, ros-dashing-librealsense2, ros-dashing-nav-msgs, ros-dashing-pcl-conversions, ros-dashing-rclcpp, ros-dashing-rclcpp-components, ros-dashing-realsense-msgs, ros-dashing-sensor-msgs, ros-dashing-tf2, ros-dashing-tf2-ros, ros-dashing-ros-workspace
+Description: ROS2 RealSense Package
