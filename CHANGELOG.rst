@@ -1,6 +1,22 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Changelog for ros2_intel_realsense
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2.0.7 (2020-04-20)
+------------------
+Support the latest release(v2.34.0) of librealsense
+Support ROS2 Foxy release
+
+2.0.6 (2019-09-03)
+------------------
+* support multi camera
+* support hot plugin and automatic reconnection
+
+2.0.5 (2019-08-30)
+------------------
+* Support T265 and D435i
+* Support reconfigure parameters at runtime
+* Support the latest release(v2.26.0) of librealsense
+* Implement ROS2 realsense node as a component which can be loaded at runtime and adopt the advanced features in ROS2 dashing release, e.g. intra-process communication.
 
 2.0.3 (2018-12-11)
 ------------------

@@ -1,125 +1,240 @@
-# ROS2 Wrapper for Intel&reg; RealSense&trade; Devices
-These are packages for using Intel RealSense cameras (D400 series) with ROS2.
+# ROS2 Package for Intel&reg; RealSense&trade; Devices
+## Supported Devices
+* Intel&reg; RealSense&trade; Camera D400-Series
+   - Intel&reg; RealSense&trade; Depth Cameras D415, D435 and D435i
+* Intel&reg; RealSense&trade; Tracking Camera T265
 
 ## Installation Instructions
 
-The following instructions were verified with ROS2 crystal on **Ubutnu 18.04**.
+The following instructions were verified with ROS2 Dashing on Ubuntu 18.04.
 
-### Dependencies
-#### Install ROS2 packages [ros-crystal-desktop](https://index.ros.org/doc/ros2/Installation/Linux-Install-Debians/)
-  ```bash
-  sudo apt-get install ros-crystal-desktop
-  ```
-  The ros-crystal-desktop will include below packages.
-  * ament_cmake
-  * std_msgs
-  * sensor_msgs
-  * builtin_interfaces
-  * eigen
-  * rmw_implementation
-  * rclcpp
-  * tf2_ros
-  * rosidl_default_generators
-  * rosidl_default_runtime
+### Install Dependencies
+#### 1. Install ROS2 packages [ros-dashing-desktop](https://index.ros.org/doc/ros2/Installation/Linux-Install-Debians/)
 
-#### Install ROS2 dependences
+#### 2. Install ROS2 dependences
   Currently, we support librealsense master branch.
   ```bash
-  sudo apt-get install ros-crystal-cv-bridge ros-crystal-librealsense2 ros-crystal-message-filters ros-crystal-image-transport
+  sudo apt-get install ros-dashing-cv-bridge ros-dashing-librealsense2 ros-dashing-message-filters ros-dashing-image-transport
   ```
-  * [cv_bridge](https://github.com/ros-perception/vision_opencv/tree/ros2/cv_bridge)
   * [Intel® RealSense™ SDK 2.0](https://github.com/IntelRealSense/librealsense.git)
+  * [cv_bridge](https://github.com/ros-perception/vision_opencv/tree/ros2/cv_bridge)
   * [ros2_message_filters](https://github.com/ros2/message_filters)
   * [ros2 image_transport](https://github.com/ros-perception/image_common/tree/ros2)
   
-#### Install Other non-ROS debian packages
+#### 3. Install other non-ROS debian packages
   ```
   sudo apt-get install -y libssl-dev libusb-1.0-0-dev pkg-config libgtk-3-dev
   sudo apt-get install -y libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev
   ```
-  * libssl-dev
-  * libusb-1.0-0-dev
-  * pkg-config
-  * libgtk-3-dev
-  * libglfw3-dev
-  * libgl1-mesa-dev
-  * libglu1-mesa-dev
-
+<!--
 ### Install ros2_intel_realsense binary packages
   ```
-  sudo apt-get install ros-crystal-realsense-camera-msgs ros-crystal-realsense-ros2-camera
+  sudo apt-get install ros-dashing-realsense-msgs ros-dashing-realsense-ros
   ```
-  The ros2_intel_realsense packages installation have been completed. You could jump to [Usage Instructions](https://github.com/intel/ros2_intel_realsense#usage-instructions) for executing, you could also install ros2_intel_realsense from source for more features. 
+  The ros2_intel_realsense packages installation have been completed. You could jump to [Usage Instructions](https://github.com/intel/ros2_intel_realsense#usage-instructions) for executing, you could also install ros2_intel_realsense from source for more features. -->
 
-### Install ros2_intel_realsense from source
+### Install ros2_intel_realsense From Source
 ```bash
-#get code
+# fetch code
 mkdir -p ~/ros2_ws/src
 cd ~/ros2_ws/src
 git clone https://github.com/intel/ros2_intel_realsense.git
-
-#build
+cd ros2_intel_realsense
+git checkout refactor
+# build
+source /opt/ros/dashing/setup.bash
 cd ~/ros2_ws
-source /opt/ros/crystal/setup.bash
-colcon build --base-paths src/ros2_intel_realsense
+colcon build --symlink-install
 ```
 
 ## Usage Instructions
 
-### Start the camera node
+### Start Camera Node
+Obtain the serial number of your device
+```bash
+rs-enumerate-devices
+```
+Change the corresponding yaml file with the specific serial number, e.g. for [d435.yaml](https://github.com/intel/ros2_intel_realsense/blob/refactor/realsense_ros/config/d435.yaml#L3) in line3:
+>serial_no: <serial_number_of_your_device> # d435
+
+
 To start the camera node in ROS2, plug in the camera, then type the following command:
 
+#### Single camera, taking d435 for example:
+
 ```bash
-source /opt/ros/crystal/setup.bash
+source /opt/ros/dashing/setup.bash
 source ~/ros2_ws/install/local_setup.bash
-# To launch with "ros2 run"
-ros2 run realsense_ros2_camera realsense_ros2_camera
-# OR, to invoke the executable directly
-realsense_ros2_camera
+
+## using ros2 run
+cd ~/ros2_ws
+ros2 run realsense_node realsense_node __params:=`ros2 pkg prefix realsense_examples`/share/realsense_ros/config/d435.yaml __ns:=/d435
+## using ros2 launch
+ros2 launch realsense_examples rs_camera.launch.py
 ```
 
-This will stream all camera sensors and publish on the appropriate ROS2 topics. PointCloud2 is enabled by default, till we provide ROS2 python launch options.
+#### Multi camera, taking d435 and t265 for example:
 
-### Published Topics
-[/camera/depth/image_rect_raw](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Image.msg)
+* Terminal 1:
 
-[/camera/color/image_raw](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Image.msg)
-
-[/camera/infra1/image_rect_raw](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Image.msg)
-
-[/camera/infra2/image_rect_raw](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Image.msg)
-
-[/camera/depth/color/points](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/PointCloud2.msg)
-
-### Visualize Depth Point Cloud
-
-To start the camera node in ROS2 and view the depth pointcloud in rviz:
 ```bash
-# console #1 launch realsense_ros2_camera
-source /opt/ros/crystal/setup.bash
+source /opt/ros/dashing/setup.bash
 source ~/ros2_ws/install/local_setup.bash
-ros2 launch realsense_ros2_camera ros2_intel_realsense.launch.py
+
+cd ~/ros2_ws
+ros2 run realsense_node realsense_node __params:=`ros2 pkg prefix realsense_examples`/share/realsense_examples/config/d435.yaml __ns:=/d435
 ```
 
-This will launch [RViz](http://wiki.ros.org/rviz) and display the five streams: color, depth, infra1, infra2, pointcloud.
+* Terminal 2:
 
-![realsense_ros2_camera visualization results](https://github.com/intel/ros2_intel_realsense/raw/master/realsense_ros2_camera/rviz/ros2_rviz.png "realsense_ros2_camera visualization results")
+```bash
+source /opt/ros/dashing/setup.bash
+source ~/ros2_ws/install/local_setup.bash
 
-### Run tests
-```Shell
-colcon test --base-paths src/ros2_intel_realsense
+cd ~/ros2_ws
+ros2 run realsense_node realsense_node __params:=`ros2 pkg prefix realsense_examples`/share/realsense_examples/config/t265.yaml __ns:=/t265
 ```
+
+* Or using ros2 launch :
+
+```bash
+source /opt/ros/dashing/setup.bash
+source ~/ros2_ws/install/local_setup.bash
+
+cd ~/ros2_ws
+## before launch all the cameras, serial number should be set in the launch file
+ros2 launch realsense_examples rs_multiple_devices.launch.py
+```
+
+#### Multi camera with tf(transform), taking d435 and t265 for example:
+
+```bash
+source /opt/ros/dashing/setup.bash
+source ~/ros2_ws/install/local_setup.bash
+
+cd ~/ros2_ws
+## before launch all the cameras, serial number should be set in the launch file
+ros2 launch realsense_examples rs_t265_and_d400.launch.py
+```
+
+***for more usage of these launch files in realsense_examples/launch, please refer to our [robot devkit](https://inte.github.io/robot_devkit) project, includes SLAM and navigation etc.***
+
+### Configure Parameters at Runtime
+Currently only support reconfigure parameters by `ros2 param` at runtime, e.g.  
+
+Enable camera stream
+
+```bash
+ros2 param list
+ros2 param get <node_name> color0.enabled
+ros2 param set <node_name> color0.enabled true
+```
+
+Enable aligned depth
+
+```bash
+ros2 param set <node_name> align_depth true
+```
+
+Enable pointcloud
+
+```bash
+ros2 param set <node_name> enable_pointcloud true
+```
+
+## Published Topics
+
+*  D435 and D415
+
+[camera/color/image_raw](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Image.msg)
+
+[camera/color/camera_info](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/CameraInfo.msg)
+
+[camera/infra1/image_rect_raw](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Image.msg)
+
+[camera/infra1/camera_info](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/CameraInfo.msg)
+
+[camera/infra2/image_rect_raw](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Image.msg)
+
+[camera/infra2/camera_info](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/CameraInfo.msg)
+
+[camera/depth/image_rect_raw](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Image.msg)
+
+[camera/depth/camera_info](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/CameraInfo.msg)
+
+[camera/aligned_depth_to_color/image_raw](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Image.msg)
+
+[camera/aligned_depth_to_color/camera_info](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/CameraInfo.msg)
+
+[camera/pointcloud](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/PointCloud2.msg)
+
+*  D435i  
+
+[camera/color/image_raw](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Image.msg)
+
+[camera/color/camera_info](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/CameraInfo.msg)
+
+[camera/infra1/image_rect_raw](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Image.msg)
+
+[camera/infra1/camera_info](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/CameraInfo.msg)
+
+[camera/infra2/image_rect_raw](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Image.msg)
+
+[camera/infra2/camera_info](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/CameraInfo.msg)
+
+[camera/depth/image_rect_raw](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Image.msg)
+
+[camera/depth/camera_info](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/CameraInfo.msg)
+
+[camera/aligned_depth_to_color/image_raw](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Image.msg)
+
+[camera/aligned_depth_to_color/camera_info](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/CameraInfo.msg)
+
+[camera/pointcloud](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/PointCloud2.msg)
+
+[camera/gyro/sample](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Imu.msg)
+
+[camera/gyro/imu_info](https://github.com/intel/ros2_intel_realsense/blob/refactor/realsense_msgs/msg/IMUInfo.msg)
+
+[camera/accel/sample](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Imu.msg)
+
+[camera/accel/imu_info](https://github.com/intel/ros2_intel_realsense/blob/refactor/realsense_msgs/msg/IMUInfo.msg)
+
+*  T265  
+
+[camera/fisheye1/image_rect_raw](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Image.msg)
+
+[camera/fisheye1/camera_info](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/CameraInfo.msg)
+
+[camera/fisheye2/image_rect_raw](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Image.msg)
+
+[camera/fisheye1/camera_info](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/CameraInfo.msg)
+
+[camera/gyro/sample](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Imu.msg)
+
+[camera/gyro/imu_info](https://github.com/intel/ros2_intel_realsense/blob/refactor/realsense_msgs/msg/IMUInfo.msg)
+
+[camera/accel/sample](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/Imu.msg)
+
+[camera/accel/imu_info](https://github.com/intel/ros2_intel_realsense/blob/refactor/realsense_msgs/msg/IMUInfo.msg)
+
+[camera/odom/sample](https://github.com/ros2/common_interfaces/blob/master/nav_msgs/msg/Odometry.msg)
 
 ## Known Issues
-* This ROS2 node does not currently provide any dynamic reconfigure support for camera properties/presets.
+
+* Don't support dynamic reconfigure parameters by rqt_reconfigure due to [issue#53](https://github.com/ros-visualization/rqt_reconfigure/issues/53) of rqt_reconfigure, but you still can reconfigure parameters by `ros2 param`.
 * We support Ubuntu Linux Bionic Beaver 18.04 on 64-bit, but not support Mac OS X 10.12 (Sierra) and Windows 10 yet.
 
-## Todo
-A few features to be ported from the latest ROS [realsense](https://github.com/intel-ros/realsense.git)
-* Preset/Controls
+## TODO
+
+* Add more tests
+* Merge sensor data from gyroscope and accelerator into one topic
+* Support diagnostics
+* Support reconfigure parameters by GUI
 
 ## License
-Copyright 2018 Intel Corporation
+
+Copyright 2019 Intel Corporation
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this project except in compliance with the License.
