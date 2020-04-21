@@ -1,0 +1,12 @@
+Source: ros-dashing-realsense-examples
+Section: misc
+Priority: optional
+Maintainer: Xiaojun Huang <xiaojun.huang@intel.com>
+Build-Depends: debhelper (>= 9.0.0), ros-dashing-ament-cmake, ros-dashing-ament-lint-auto, ros-dashing-ament-lint-common, ros-dashing-librealsense2, ros-dashing-rclcpp, ros-dashing-rclcpp-components, ros-dashing-realsense-msgs, ros-dashing-realsense-node, ros-dashing-realsense-ros, ros-dashing-ros-workspace
+Homepage: 
+Standards-Version: 3.9.2
+
+Package: ros-dashing-realsense-examples
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-dashing-launch-ros, ros-dashing-librealsense2, ros-dashing-rclcpp, ros-dashing-rclcpp-components, ros-dashing-realsense-msgs, ros-dashing-realsense-node, ros-dashing-realsense-ros, ros-dashing-ros-workspace
+Description: ROS2 RealSense Package Exampless
