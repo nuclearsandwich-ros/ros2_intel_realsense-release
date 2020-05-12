@@ -1,3 +1,30 @@
+## ros2_intel_realsense (foxy) - 2.0.8-2
+
+The packages in the `ros2_intel_realsense` repository were released into the `foxy` distro by running `/usr/bin/bloom-release --rosdistro foxy --track foxy ros2_intel_realsense --edit-track` on `Tue, 12 May 2020 06:34:19 -0000`
+
+These packages were released:
+- `realsense_examples`
+- `realsense_msgs`
+- `realsense_node`
+- `realsense_ros`
+
+Version of package(s) in repository `ros2_intel_realsense`:
+
+- upstream repository: https://github.com/intel/ros2_intel_realsense.git
+- release repository: unknown
+- rosdistro version: `null`
+- old version: `2.0.8-1`
+- new version: `2.0.8-2`
+
+Versions of tools used:
+
+- bloom version: `0.9.7`
+- catkin_pkg version: `0.4.18`
+- rosdep version: `0.19.0`
+- rosdistro version: `0.8.1`
+- vcstools version: `0.1.42`
+
+
 ## ros2_intel_realsense (foxy) - 2.0.8-1
 
 The packages in the `ros2_intel_realsense` repository were released into the `foxy` distro by running `/usr/bin/bloom-release --rosdistro foxy --track foxy ros2_intel_realsense --edit-track` on `Sat, 09 May 2020 08:28:19 -0000`
