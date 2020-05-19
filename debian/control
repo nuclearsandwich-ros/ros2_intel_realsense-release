@@ -1,0 +1,12 @@
+Source: ros-testing-realsense-ros
+Section: misc
+Priority: optional
+Maintainer: Xiaojun Huang <xiaojun.huang@intel.com>
+Build-Depends: debhelper (>= 9.0.0), ros-testing-ament-cmake, ros-testing-ament-cmake-gtest, ros-testing-ament-lint-auto, ros-testing-ament-lint-common, ros-testing-librealsense2, ros-testing-nav-msgs, ros-testing-rclcpp, ros-testing-rclcpp-components, ros-testing-realsense-msgs, ros-testing-sensor-msgs, ros-testing-tf2, ros-testing-tf2-ros, ros-testing-ros-workspace
+Homepage: 
+Standards-Version: 3.9.2
+
+Package: ros-testing-realsense-ros
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-testing-launch-ros, ros-testing-librealsense2, ros-testing-nav-msgs, ros-testing-rclcpp, ros-testing-rclcpp-components, ros-testing-realsense-msgs, ros-testing-sensor-msgs, ros-testing-tf2, ros-testing-tf2-ros, ros-testing-ros-workspace
+Description: ROS2 RealSense Package
