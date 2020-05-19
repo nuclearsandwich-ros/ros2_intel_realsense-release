@@ -1,0 +1,12 @@
+Source: ros-testing-realsense-msgs
+Section: misc
+Priority: optional
+Maintainer: Xiaojun Huang <xiaojun.huang@intel.com>
+Build-Depends: debhelper (>= 9.0.0), ros-testing-ament-cmake, ros-testing-ament-lint-common, ros-testing-rosidl-default-generators, ros-testing-std-msgs, ros-testing-ros-workspace, ros-testing-rosidl-typesupport-connext-c, ros-testing-rosidl-typesupport-connext-cpp, ros-testing-rosidl-typesupport-fastrtps-c, ros-testing-rosidl-typesupport-fastrtps-cpp
+Homepage: 
+Standards-Version: 3.9.2
+
+Package: ros-testing-realsense-msgs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-testing-rosidl-default-runtime, ros-testing-std-msgs, ros-testing-ros-workspace
+Description: Message Definition for ROS2 RealSense Package
