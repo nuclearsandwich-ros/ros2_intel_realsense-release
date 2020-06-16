@@ -1,0 +1,12 @@
+Source: ros-rolling-realsense-msgs
+Section: misc
+Priority: optional
+Maintainer: Xiaojun Huang <xiaojun.huang@intel.com>
+Build-Depends: debhelper (>= 9.0.0), ros-rolling-ament-cmake, ros-rolling-ament-lint-common, ros-rolling-rosidl-default-generators, ros-rolling-std-msgs, ros-rolling-ros-workspace, ros-rolling-rosidl-typesupport-connext-c, ros-rolling-rosidl-typesupport-connext-cpp, ros-rolling-rosidl-typesupport-fastrtps-c, ros-rolling-rosidl-typesupport-fastrtps-cpp
+Homepage: 
+Standards-Version: 3.9.2
+
+Package: ros-rolling-realsense-msgs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-rolling-rosidl-default-runtime, ros-rolling-std-msgs, ros-rolling-ros-workspace
+Description: Message Definition for ROS2 RealSense Package
