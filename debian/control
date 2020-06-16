@@ -1,0 +1,12 @@
+Source: ros-rolling-realsense-node
+Section: misc
+Priority: optional
+Maintainer: Xiaojun Huang <xiaojun.huang@intel.com>
+Build-Depends: debhelper (>= 9.0.0), ros-rolling-ament-cmake, ros-rolling-ament-lint-auto, ros-rolling-ament-lint-common, ros-rolling-nav-msgs, ros-rolling-rclcpp, ros-rolling-realsense-msgs, ros-rolling-realsense-ros, ros-rolling-sensor-msgs, ros-rolling-tf2, ros-rolling-tf2-ros, ros-rolling-ros-workspace
+Homepage: 
+Standards-Version: 3.9.2
+
+Package: ros-rolling-realsense-node
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-rolling-nav-msgs, ros-rolling-rclcpp, ros-rolling-realsense-msgs, ros-rolling-realsense-ros, ros-rolling-sensor-msgs, ros-rolling-tf2, ros-rolling-tf2-ros, ros-rolling-ros-workspace
+Description: ROS2 realsense node
