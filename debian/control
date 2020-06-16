@@ -1,0 +1,12 @@
+Source: ros-rolling-realsense-ros
+Section: misc
+Priority: optional
+Maintainer: Xiaojun Huang <xiaojun.huang@intel.com>
+Build-Depends: debhelper (>= 9.0.0), ros-rolling-ament-cmake, ros-rolling-ament-cmake-gtest, ros-rolling-ament-lint-auto, ros-rolling-ament-lint-common, ros-rolling-librealsense2, ros-rolling-nav-msgs, ros-rolling-rclcpp, ros-rolling-rclcpp-components, ros-rolling-realsense-msgs, ros-rolling-sensor-msgs, ros-rolling-tf2, ros-rolling-tf2-ros, ros-rolling-ros-workspace
+Homepage: 
+Standards-Version: 3.9.2
+
+Package: ros-rolling-realsense-ros
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-rolling-launch-ros, ros-rolling-librealsense2, ros-rolling-nav-msgs, ros-rolling-rclcpp, ros-rolling-rclcpp-components, ros-rolling-realsense-msgs, ros-rolling-sensor-msgs, ros-rolling-tf2, ros-rolling-tf2-ros, ros-rolling-ros-workspace
+Description: ROS2 RealSense Package
